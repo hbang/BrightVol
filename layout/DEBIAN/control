@@ -1,0 +1,9 @@
+Package: ws.hbang.brightvol
+Name: BrightVol
+Depends: mobilesubstrate
+Version: 1.0
+Architecture: iphoneos-arm
+Description: Control brightness with volume buttons
+Maintainer: HASHBANG Productions <brightvol@hbang.ws>
+Author: HASHBANG Productions <brightvol@hbang.ws>
+Section: Tweaks
