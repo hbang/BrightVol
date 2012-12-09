@@ -1,6 +1,6 @@
 Package: ws.hbang.brightvol
 Name: BrightVol
-Depends: mobilesubstrate
+Depends: mobilesubstrate, libactivator
 Version: 1.0
 Architecture: iphoneos-arm
 Description: Control brightness with volume buttons
