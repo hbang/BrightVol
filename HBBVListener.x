@@ -1,6 +1,6 @@
 #import "HBBVListener.h"
 #import <SpringBoard/SBHUDController.h>
-#import <SpringBoard/SBRotationLockHUDView.h>
+#import <SpringBoard/SBHUDView.h>
 
 BOOL HBBVToggleMode();
 
@@ -9,7 +9,7 @@ BOOL HBBVToggleMode();
 - (void)activator:(LAActivator *)activator receiveEvent:(LAEvent *)event {
 	event.handled = YES;
 
-	SBRotationLockHUDView *hud = [[[%c(SBRotationLockHUDView) alloc] init] autorelease];
+	SBHUDView *hud = [[[%c(SBHUDView) alloc] initWithHUDViewLevel:0] autorelease];
 	hud.image = [UIImage imageNamed:HBBVToggleMode() ? @"brightness" : @"speaker"];
 	[[%c(SBHUDController) sharedHUDController] presentHUDView:hud autoDismissWithDelay:1];
 }
