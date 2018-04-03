@@ -1,61 +1,32 @@
 #import "HBBVListener.h"
-#import <BackBoardServices/BKSDisplayBrightness.h>
-#import <SpringBoard/SBBrightnessController.h>
-#import <SpringBoard/SBBrightnessHUDView.h>
-#import <SpringBoard/SBHUDController.h>
 #import <SpringBoard/VolumeControl.h>
-#import <version.h>
 
-BOOL brightnessMode;
-NSTimer *timer;
-
-BOOL HBBVToggleMode() {
-	brightnessMode = !brightnessMode;
-	return brightnessMode;
-}
-
-void HBBVSetBrightness(BOOL direction, VolumeControl* volumeControl) {
-	[[%c(SBBrightnessController) sharedBrightnessController] adjustBacklightLevel:direction];
-
-#ifndef BRIGHTVOL_LEGACY
-	BKSDisplayBrightnessTransactionRef transaction = BKSDisplayBrightnessTransactionCreate(kCFAllocatorDefault);
-	BKSDisplayBrightnessSet(BKSDisplayBrightnessGetCurrent(), 1);
-	CFRelease(transaction);
-#endif
-
-	if (timer) {
-		[timer invalidate];
-		[timer release];
-	}
-
-	timer = [[NSTimer scheduledTimerWithTimeInterval:30 target:volumeControl selector:@selector(_brightvol_timerFired) userInfo:nil repeats:NO] retain];
-}
+static HBBVListener *listener;
 
 %hook VolumeControl
 
 - (void)increaseVolume {
-	if (brightnessMode) {
-		HBBVSetBrightness(YES, self);
+	// if we’re in brightness mode, call our brightness changer method. otherwise call the original
+	// implementation (change volume)
+	if (listener.brightnessMode) {
+		[listener setBrightness:YES volumeControl:self];
 	} else {
 		%orig;
 	}
 }
 
 - (void)decreaseVolume {
-	if (brightnessMode) {
-		HBBVSetBrightness(NO, self);
+	if (listener.brightnessMode) {
+		[listener setBrightness:NO volumeControl:self];
 	} else {
 		%orig;
 	}
 }
 
-/*
- activator makes pressing volume keys call _changeVolumeBy:
- on ipad. most likely a leftover 3.2 compatibility thing...
-*/
-
 - (void)_changeVolumeBy:(CGFloat)by {
-	if (brightnessMode) {
+	// activator makes pressing volume keys call _changeVolumeBy: on ipad rather than the above
+	// methods. seems most likely a leftover 3.2 compatibility thing (ew).
+	if (listener.brightnessMode) {
 		if (by > 0) {
 			[self increaseVolume];
 		} else {
@@ -66,19 +37,17 @@ void HBBVSetBrightness(BOOL direction, VolumeControl* volumeControl) {
 	}
 }
 
-%new - (void)_brightvol_timerFired {
-	brightnessMode = NO;
-
-	[timer release];
-	timer = nil;
-}
-
 %end
 
 %ctor {
-	if (![[LAActivator sharedInstance] hasSeenListenerWithName:@"ws.hbang.brightvol"]) {
-		[[LAActivator sharedInstance] assignEvent:[LAEvent eventWithName:@"libactivator.volume.both.press"] toListenerWithName:@"ws.hbang.brightvol"];
+	LAActivator *activator = [LAActivator sharedInstance];
+
+	// if activator has never seen us before, assign ourself with the default event
+	if (![activator hasSeenListenerWithName:@"ws.hbang.brightvol"]) {
+		[activator assignEvent:[LAEvent eventWithName:@"libactivator.volume.both.press"] toListenerWithName:@"ws.hbang.brightvol"];
 	}
 
-	[[LAActivator sharedInstance] registerListener:[[HBBVListener alloc] init] forName:@"ws.hbang.brightvol"];
+	// register the listener with activator
+	listener = [[HBBVListener alloc] init];
+	[activator registerListener:listener forName:@"ws.hbang.brightvol"];
 }
